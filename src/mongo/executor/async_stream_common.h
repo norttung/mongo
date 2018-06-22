@@ -114,6 +114,17 @@ std::error_code setStreamNoDelay(ASIOStream* stream) {
     return ec;
 }
 
+template <typename ASIOStream>
+std::error_code setStreamKeepAlive(ASIOStream* stream) {
+    std::error_code ec;
+    stream->set_option(asio::socket_base::keep_alive(true), ec);
+    setSocketKeepAliveParams(stream->native_handle());
+    if (ec) {
+        logFailureInSetStreamNoDelay(ec);
+    }
+    return ec;
+}
+
 void logUnexpectedErrorInCheckOpen(std::error_code ec);
 
 template <typename ASIOStream>
