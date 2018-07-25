@@ -129,6 +129,7 @@ bool handleCursorCommand(OperationContext* opCtx,
 
     CursorResponseBuilder::Options options;
     options.isInitialResponse = true;
+    options.useDocumentSequences = request.getTempOptInToDocumentSequences();
     CursorResponseBuilder responseBuilder(result, options);
 
     ClientCursor* cursor = cursors[0];

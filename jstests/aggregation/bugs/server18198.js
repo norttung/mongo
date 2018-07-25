@@ -42,6 +42,9 @@
             getClusterTime: function() {
                 return mongo.getClusterTime();
             },
+            useReadCommands: function() {
+                return mongo.useReadCommands()
+            }
         };
 
         db._mongo = mockMongo;

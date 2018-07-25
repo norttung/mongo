@@ -86,6 +86,7 @@ void CursorResponseBuilder::done(CursorId cursorId, StringData cursorNamespace) 
 
 void CursorResponseBuilder::abandon() {
     invariant(_active);
+    _docSeqBuilder.reset();
     _batch.reset();
     _cursorObject.reset();
     _bodyBuilder.reset();
