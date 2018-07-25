@@ -105,7 +105,7 @@ DBQuery.prototype._exec = function() {
         assert.eq(0, this._numReturned);
         this._cursorSeen = 0;
 
-        if (this._mongo.useReadCommands() && this._canUseFindCommand()) {
+        if ((this._mongo.useReadCommandsNoDocumentSequences() || this.mongo && this._canUseFindCommand()) {
             var canAttachReadPref = true;
             var findCmd = this._convertToCommand(canAttachReadPref);
             var cmdRes = this._db.runReadCommand(findCmd, null, this._options);
@@ -251,6 +251,10 @@ DBQuery.prototype._convertToCommand = function(canAttachReadPref) {
             var prefObj = this._query.$readPreference;
             cmd = this._db._attachReadPreferenceToCommand(cmd, prefObj);
         }
+    }
+
+    if (this._mongo.useReadCommands()) {
+        cmd["tempOptInToDocumentSequences"] = true;
     }
 
     return cmd;
@@ -701,12 +705,16 @@ function DBCommandCursor(db, cmdResult, batchSize, maxAwaitTimeMS, txnNumber) {
 
     this._batch = cmdResult.cursor.firstBatch.reverse();  // modifies input to allow popping
 
-    if (db.getMongo().useReadCommands()) {
+    if (db.getMongo().useReadCommandsNoDocumentSequences()) {
         this._useReadCommands = true;
         this._cursorid = cmdResult.cursor.id;
         this._batchSize = batchSize;
         this._maxAwaitTimeMS = maxAwaitTimeMS;
         this._txnNumber = txnNumber;
+
+        if (db.getMongo().useReadCommands()) {
+            this._useDocumentSequences = true;
+        }
 
         this._ns = cmdResult.cursor.ns;
         this._db = db;
@@ -785,6 +793,11 @@ DBCommandCursor.prototype._runGetMoreCommand = function() {
         getMoreCmd.autocommit = false;
     }
 
+    if (this._useDocumentSequences) {
+        getMoreCmd["tempOptInToDocumentSequences"] = true;
+
+    }
+    
     // Deliver the getMore command, and check for errors in the response.
     var cmdRes = this._db.runCommand(getMoreCmd);
     if (cmdRes.ok != 1) {
