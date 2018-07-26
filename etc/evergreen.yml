@@ -4584,6 +4584,17 @@ tasks:
       run_multiple_jobs: true
 
 - <<: *task_template
+  name: jsCore_compatibility_no_document_sequences
+  depends_on:
+  - name: jsCore
+  commands:
+  - func: "do setup"
+  - func: "run tests"
+    vars:
+      resmoke_args: --suites=core --shellReadMode=commandsNoDocumentSequences --shellWriteMode=compatibility --storageEngine=wiredTiger --excludeWithAnyTags=requires_document_sequences
+      run_multiple_jobs: true
+
+- <<: *task_template
   name: jsCore_auth
   depends_on:
   - name: jsCore
@@ -7269,6 +7280,7 @@ buildvariants:
   - name: jsCore_auth
   - name: jsCore_op_query
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -7428,6 +7440,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -7560,6 +7573,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
   - name: aggregation_fuzzer
@@ -7647,6 +7661,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -7743,6 +7758,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: aggregation_fuzzer
@@ -7996,6 +8012,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -8083,6 +8100,7 @@ buildvariants:
   - name: sharding_gle_auth_basics_passthrough_write_cmd
   - name: jsCore
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -8202,6 +8220,7 @@ buildvariants:
   - name: sharding_gle_auth_basics_passthrough_write_cmd
   - name: jsCore
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -8303,6 +8322,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_ese
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_op_query
   - name: jsCore_txns
@@ -8475,6 +8495,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -8654,6 +8675,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -8759,6 +8781,7 @@ buildvariants:
   - name: integration_tests_sharded
   - name: jsCore
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -9329,6 +9352,7 @@ buildvariants:
   - name: gle_auth_write_cmd
   - name: jsCore
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -9489,6 +9513,7 @@ buildvariants:
   - name: gle_auth_write_cmd
   - name: jsCore
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -9559,6 +9584,7 @@ buildvariants:
   - name: failpoints
   - name: jsCore
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -10153,6 +10179,7 @@ buildvariants:
   - name: jsCore_ese
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_minimum_batch_size
   - name: jsCore_op_query
@@ -10699,6 +10726,7 @@ buildvariants:
   - name: jsCore_ese
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_minimum_batch_size
   - name: jsCore_op_query
@@ -10904,6 +10932,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -10995,6 +11024,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -11116,6 +11146,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_ese
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_op_query
   - name: jsCore_txns
@@ -11226,6 +11257,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_ese
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_op_query
   - name: jsCore_txns
@@ -11334,6 +11366,7 @@ buildvariants:
   - name: jsCore_ese
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_minimum_batch_size
   - name: jsCore_op_query
@@ -11706,6 +11739,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_ese
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_op_query
   - name: jsCore_txns
@@ -11802,6 +11836,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
   - name: aggregation_fuzzer
@@ -11951,6 +11986,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
   - name: aggregation_fuzzer
@@ -12104,6 +12140,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
   - name: aggregation_fuzzer
@@ -12231,6 +12268,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_op_query
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -12355,6 +12393,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_minimum_batch_size
   - name: jsCore_mobile
@@ -12406,6 +12445,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_minimum_batch_size
   - name: jsCore_mobile
@@ -12485,6 +12525,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_minimum_batch_size
   - name: jsCore_mobile
@@ -12549,6 +12590,7 @@ buildvariants:
   - name: jsCore_auth
   - name: jsCore_op_query
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: aggregation_fuzzer
   - name: jstestfuzz
   - name: jstestfuzz_concurrent
@@ -12633,6 +12675,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_op_query
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -12730,6 +12773,7 @@ buildvariants:
   - name: jsCore
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_op_query
   - name: jsCore_txns
   - name: causally_consistent_jscore_txns_passthrough
@@ -12853,6 +12897,7 @@ buildvariants:
   - name: jsCore_ese
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_minimum_batch_size
   - name: jsCore_op_query
@@ -13034,6 +13079,7 @@ buildvariants:
   - name: jsCore_ese
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_minimum_batch_size
   - name: jsCore_op_query
@@ -13179,6 +13225,7 @@ buildvariants:
   - name: jsCore_ese
   - name: jsCore_auth
   - name: jsCore_compatibility
+  - name: jsCore_compatibility_no_document_sequences
   - name: jsCore_decimal
   - name: jsCore_minimum_batch_size
   - name: jsCore_op_query
