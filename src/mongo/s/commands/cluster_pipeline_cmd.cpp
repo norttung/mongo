@@ -68,10 +68,8 @@ public:
                                    const std::string& dbname,
                                    const BSONObj& cmdObj,
                                    boost::optional<ExplainOptions::Verbosity> verbosity,
-                                   BSONObjBuilder* result) {
-            const auto aggregationRequest =
-                uassertStatusOK(AggregationRequest::parseFromBSON(dbname, cmdObj, verbosity));
-
+                                   BSONObjBuilder* result,
+                                   const AggregationRequest& aggregationRequest) {
             const auto& nss = aggregationRequest.getNamespaceString();
 
             uassertStatusOK(ClusterAggregate::runAggregate(
@@ -79,15 +77,35 @@ public:
         }
 
         void run(OperationContext* opCtx, rpc::ReplyBuilderInterface* reply) override {
-            auto bob = reply->getBodyBuilder();
-            _runAggCommand(opCtx, _dbName, _request.body, boost::none, &bob);
+            auto aggregationRequest =
+                    uassertStatusOK(AggregationRequest::parseFromBSON(_dbName, _request.body, boost::none));
+            auto useDocSeq = aggregationRequest.getTempOptInToDocumentSequences();
+            aggregationRequest.setTempOptInToDocumentSequences(false);
+
+            BSONObjBuilder bob;
+            _runAggCommand(opCtx, _dbName, _request.body, boost::none, &bob, aggregationRequest);
+            auto bsonobj = bob.obj();
+
+            if (!useDocSeq) {
+                reply->getBodyBuilder().appendElementsUnique(bsonobj);
+                return;
+            }
+
+            auto result = uassertStatusOK(CursorResponse::parseFromBSON(bsonobj));
+            result.addToReply(CursorResponse::ResponseType::InitialResponse, reply, true);
+            auto bodyBuilder = reply->getBodyBuilder();
+            bodyBuilder.appendElementsUnique(bsonobj);
         }
 
         void explain(OperationContext* opCtx,
                      ExplainOptions::Verbosity verbosity,
                      rpc::ReplyBuilderInterface* result) override {
+            auto aggregationRequest =
+                    uassertStatusOK(AggregationRequest::parseFromBSON(_dbName, _request.body, boost::none));
+            aggregationRequest.setTempOptInToDocumentSequences(false);
+
             auto bodyBuilder = result->getBodyBuilder();
-            _runAggCommand(opCtx, _dbName, _request.body, verbosity, &bodyBuilder);
+            _runAggCommand(opCtx, _dbName, _request.body, verbosity, &bodyBuilder, aggregationRequest);
         }
 
         void doCheckAuthorization(OperationContext* opCtx) const override {
