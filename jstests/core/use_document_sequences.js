@@ -6,33 +6,28 @@
 (function() {
     "use strict";
 
-    const mongodOptions = {};
-    const conn = MongoRunner.runMongod(mongodOptions);
-    assert.neq(null, conn, "mongod failed to start with options " + tojson(mongodOptions));
-
-    const testDB = conn.getDB("test");
-    const coll = testDB[jsTestName()];
+    const coll = db[jsTestName()];
     coll.drop();
 
-    let findRes = assert.commandWorked(testDB.runCommand({find: jsTestName()}));
+    let findRes = assert.commandWorked(db.runCommand({find: jsTestName()}));
     assert.eq(usedDocumentSequences(findRes),
               false,
               "find on empty collection utilized documentSequences when flag was not provided");
 
     let findResWithDocSeq = assert.commandWorked(
-        testDB.runCommand({find: jsTestName(), tempOptInToDocumentSequences: true}));
+        db.runCommand({find: jsTestName(), tempOptInToDocumentSequences: true}));
     assert.eq(usedDocumentSequences(findResWithDocSeq),
               true,
               "find on empty collection did not utilize documentSequences when flag was provided");
 
-    let aggRes = assert.commandWorked(testDB.runCommand({aggregate: jsTestName(), pipeline: [], cursor: {batchSize: 0}}));
+    let aggRes = assert.commandWorked(db.runCommand({aggregate: jsTestName(), pipeline: [], cursor: {batchSize: 0}}));
     assert.eq(
         usedDocumentSequences(aggRes),
         false,
         "aggregate on empty collection utilized documentSequences when flag was not provided");
 
     let aggResWithDocSeq = assert.commandWorked(
-        testDB.runCommand({aggregate: jsTestName(), pipeline: [], cursor: {batchSize: 0}, tempOptInToDocumentSequences: true}));
+        db.runCommand({aggregate: jsTestName(), pipeline: [], cursor: {batchSize: 0}, tempOptInToDocumentSequences: true}));
     assert.eq(
         usedDocumentSequences(aggResWithDocSeq),
         true,
@@ -47,57 +42,57 @@
     }
     assert.writeOK(bulk.execute());
 
-    findRes = assert.commandWorked(testDB.runCommand({find: coll.getName()}));
+    findRes = assert.commandWorked(db.runCommand({find: coll.getName()}));
     assert.eq(usedDocumentSequences(findRes),
               false,
               "find utilized documentSequences when flag was not provided");
 
     let cursorId = findRes.cursor.id;
     let getMoreRes =
-        assert.commandWorked(testDB.runCommand({getMore: cursorId, collection: coll.getName()}));
+        assert.commandWorked(db.runCommand({getMore: cursorId, collection: coll.getName()}));
     assert.eq(usedDocumentSequences(getMoreRes),
               false,
               "getMore used document sequences when flag passed to neither find nor getMore");
 
-    findRes = assert.commandWorked(testDB.runCommand({find: coll.getName()}));
+    findRes = assert.commandWorked(db.runCommand({find: coll.getName()}));
     assert.eq(usedDocumentSequences(findRes),
               false,
               "find utilized documentSequences when flag was not provided");
 
     cursorId = findRes.cursor.id;
-    let getMoreResWithDocSeq = assert.commandWorked(testDB.runCommand(
+    let getMoreResWithDocSeq = assert.commandWorked(db.runCommand(
         {getMore: cursorId, collection: coll.getName(), tempOptInToDocumentSequences: true}));
     assert.eq(usedDocumentSequences(getMoreResWithDocSeq),
               true,
               "getMore didn't use document sequences when flag passed to getMore but not find");
 
     findResWithDocSeq = assert.commandWorked(
-        testDB.runCommand({find: coll.getName(), tempOptInToDocumentSequences: true}));
+        db.runCommand({find: coll.getName(), tempOptInToDocumentSequences: true}));
     assert.eq(usedDocumentSequences(findResWithDocSeq),
               true,
               "find did not utilize documentSequences when flag was provided");
 
     cursorId = findResWithDocSeq.cursor.id;
     getMoreRes =
-        assert.commandWorked(testDB.runCommand({getMore: cursorId, collection: coll.getName()}));
+        assert.commandWorked(db.runCommand({getMore: cursorId, collection: coll.getName()}));
     assert.eq(usedDocumentSequences(getMoreRes),
               false,
               "getMore used document sequences when flag passed to find but not getMore");
 
     findResWithDocSeq = assert.commandWorked(
-        testDB.runCommand({find: coll.getName(), tempOptInToDocumentSequences: true}));
+        db.runCommand({find: coll.getName(), tempOptInToDocumentSequences: true}));
     assert.eq(usedDocumentSequences(findResWithDocSeq),
               true,
               "find did not utilize documentSequences when flag was provided");
 
     cursorId = findResWithDocSeq.cursor.id;
-    getMoreResWithDocSeq = assert.commandWorked(testDB.runCommand(
+    getMoreResWithDocSeq = assert.commandWorked(db.runCommand(
         {getMore: cursorId, collection: coll.getName(), tempOptInToDocumentSequences: true}));
     assert.eq(usedDocumentSequences(getMoreResWithDocSeq),
               true,
               "getMore didn't use document sequences when flag passed to getMore and find");
 
-    aggRes = assert.commandWorked(testDB.runCommand({
+    aggRes = assert.commandWorked(db.runCommand({
         aggregate: coll.getName(),
         pipeline: [{"$match": {stringField: "string"}}],
         cursor: {batchSize: 0}
@@ -108,12 +103,12 @@
 
     cursorId = aggRes.cursor.id;
     getMoreRes =
-        assert.commandWorked(testDB.runCommand({getMore: cursorId, collection: coll.getName()}));
+        assert.commandWorked(db.runCommand({getMore: cursorId, collection: coll.getName()}));
     assert.eq(usedDocumentSequences(getMoreRes),
               false,
               "getMore used document sequences when flag passed to neither aggregate nor getMore");
 
-    aggRes = assert.commandWorked(testDB.runCommand({
+    aggRes = assert.commandWorked(db.runCommand({
         aggregate: coll.getName(),
         pipeline: [{"$match": {stringField: "string"}}],
         cursor: {batchSize: 0}
@@ -123,14 +118,14 @@
               "aggregate utilized documentSequences when flag was not provided");
 
     cursorId = aggRes.cursor.id;
-    getMoreResWithDocSeq = assert.commandWorked(testDB.runCommand(
+    getMoreResWithDocSeq = assert.commandWorked(db.runCommand(
         {getMore: cursorId, collection: coll.getName(), tempOptInToDocumentSequences: true}));
     assert.eq(
         usedDocumentSequences(getMoreResWithDocSeq),
         true,
         "getMore didn't use document sequences when flag passed to getMore but not aggregate");
 
-    aggResWithDocSeq = assert.commandWorked(testDB.runCommand({
+    aggResWithDocSeq = assert.commandWorked(db.runCommand({
         aggregate: coll.getName(),
         pipeline: [{"$match": {stringField: "string"}}],
         cursor: {batchSize: 0},
@@ -142,12 +137,12 @@
               "aggregate did not utilize documentSequences when flag was provided");
     cursorId = aggResWithDocSeq.cursor.id;
     getMoreRes =
-        assert.commandWorked(testDB.runCommand({getMore: cursorId, collection: coll.getName()}));
+        assert.commandWorked(db.runCommand({getMore: cursorId, collection: coll.getName()}));
     assert.eq(usedDocumentSequences(getMoreRes),
               false,
               "getMore used document sequences when flag passed to aggregate but not getMore");
 
-    aggResWithDocSeq = assert.commandWorked(testDB.runCommand({
+    aggResWithDocSeq = assert.commandWorked(db.runCommand({
         aggregate: coll.getName(),
         pipeline: [{"$match": {stringField: "string"}}],
         cursor: {batchSize: 0},
@@ -158,11 +153,10 @@
               true,
               "aggregate did not utilize documentSequences when flag was provided");
     cursorId = aggResWithDocSeq.cursor.id;
-    getMoreResWithDocSeq = assert.commandWorked(testDB.runCommand(
+    getMoreResWithDocSeq = assert.commandWorked(db.runCommand(
         {getMore: cursorId, collection: coll.getName(), tempOptInToDocumentSequences: true}));
     assert.eq(usedDocumentSequences(getMoreResWithDocSeq),
               true,
               "getMore didn't use document sequences when flag passed to getMore and aggregate");
 
-    MongoRunner.stopMongod(conn);
 }());
