@@ -137,33 +137,15 @@ Status appendExplainResults(
 }
 
 Status appendCursorResponseToCommandResult(const ShardId& shardId,
-                                           const BSONObj& cursorResponse,
+                                           const BSONObj cursorResponse,
                                            BSONObjBuilder* result) {
     // If a write error was encountered, append it to the output buffer first.
     if (auto wcErrorElem = cursorResponse["writeConcernError"]) {
         appendWriteConcernErrorToCmdResponse(shardId, wcErrorElem, *result);
     }
 
-    // Pass the results from the remote shard into our command response.    
-    // Need to avoid adding the cursor field
-    // Temporary hack to just append elements that dont exist and are NOT the cursor
-    {
-        auto filteredObj = CommandHelpers::filterCommandReplyForPassthrough(cursorResponse);
-        std::set<std::string> have;
-        {
-            BSONObjIterator i = result->iterator();
-            while (i.more())
-                have.insert(i.next().fieldName());
-        }
-
-        BSONObjIterator it(filteredObj);
-        while (it.more()) {
-            BSONElement e = it.next();
-            if (e.fieldNameStringData() ==  "cursor" || have.count(e.fieldName()))
-                continue;
-            result->append(e);
-        }
-    }
+    // Pass the results from the remote shard into our command response.
+    result->appendElementsUnique(CommandHelpers::filterCommandReplyForPassthrough(cursorResponse));
     return getStatusFromCommandResult(result->asTempObj());
 }
 
@@ -518,7 +500,7 @@ Shard::CommandResponse establishMergingShardCursor(OperationContext* opCtx,
                                                        Shard::RetryPolicy::kIdempotent));
 }
 
-CursorResponse establishMergingMongosCursor(OperationContext* opCtx,
+BSONObj establishMergingMongosCursor(OperationContext* opCtx,
                                      const AggregationRequest& request,
                                      const NamespaceString& requestedNss,
                                      BSONObj cmdToRunOnNewShards,
@@ -563,10 +545,13 @@ CursorResponse establishMergingMongosCursor(OperationContext* opCtx,
 
     auto cursorState = ClusterCursorManager::CursorState::NotExhausted;
 
-    std::vector<BSONObj> batch;
-    long long numdocs = 0;
-    size_t bytesUsed = 1 /* 1 for the kind byte that would be used*/;
-    for (; numdocs < request.getBatchSize(); ++numdocs) {
+    rpc::OpMsgReplyBuilder replyBuilder;
+    CursorResponseBuilder::Options options;
+    options.isInitialResponse = true;
+
+    CursorResponseBuilder responseBuilder(&replyBuilder, options);
+
+    for (long long objCount = 0; objCount < request.getBatchSize(); ++objCount) {
         ClusterQueryResult next;
         try {
             next = uassertStatusOK(ccc->next(RouterExecStage::ExecContext::kInitialFind));
@@ -594,13 +579,12 @@ CursorResponse establishMergingMongosCursor(OperationContext* opCtx,
         // to be returned on the next getMore.
         auto nextObj = *next.getResult();
 
-        if (!FindCommon::haveSpaceForNext(nextObj, numdocs, bytesUsed)) {
+        if (!FindCommon::haveSpaceForNext(nextObj, objCount, responseBuilder.bytesUsed())) {
             ccc->queueResult(nextObj);
             break;
         }
 
-        bytesUsed += nextObj.objsize();
-        batch.push_back(nextObj);
+        responseBuilder.append(nextObj);
     }
 
     ccc->detachFromOperationContext();
@@ -625,9 +609,15 @@ CursorResponse establishMergingMongosCursor(OperationContext* opCtx,
     }
     CurOp::get(opCtx)->debug().nShards = std::max(CurOp::get(opCtx)->debug().nShards, nShards);
     CurOp::get(opCtx)->debug().cursorExhausted = (clusterCursorId == 0);
-    CurOp::get(opCtx)->debug().nreturned = numdocs;
+    CurOp::get(opCtx)->debug().nreturned = responseBuilder.numDocs();
 
-    return CursorResponse(requestedNss, clusterCursorId, std::move(batch));
+    responseBuilder.done(clusterCursorId, requestedNss.ns());
+
+    auto bodyBuilder = replyBuilder.getBodyBuilder();
+    CommandHelpers::appendSimpleCommandStatus(bodyBuilder, true);
+    bodyBuilder.doneFast();
+
+    return replyBuilder.releaseBody();
 }
 
 /**
@@ -801,7 +791,7 @@ boost::intrusive_ptr<ExpressionContext> makeExpressionContext(OperationContext* 
 
 // Runs a pipeline on mongoS, having first validated that it is eligible to do so. This can be a
 // pipeline which is split for merging, or an intact pipeline which must run entirely on mongoS.
-StatusWith<boost::optional<CursorResponse>> runPipelineOnMongoS(const boost::intrusive_ptr<ExpressionContext>& expCtx,
+Status runPipelineOnMongoS(const boost::intrusive_ptr<ExpressionContext>& expCtx,
                            const ClusterAggregate::Namespaces& namespaces,
                            const AggregationRequest& request,
                            BSONObj cmdObj,
@@ -830,7 +820,7 @@ StatusWith<boost::optional<CursorResponse>> runPipelineOnMongoS(const boost::int
         *result << "splitPipeline" << BSONNULL << "mongos"
                 << Document{{"host", getHostNameCachedAndPort()},
                             {"stages", pipeline->writeExplainOps(*expCtx->explain)}};
-        return StatusWith<boost::optional<CursorResponse>>(boost::none);
+        return Status::OK();
     }
 
     // Register the new mongoS cursor, and retrieve the initial batch of results.
@@ -838,13 +828,12 @@ StatusWith<boost::optional<CursorResponse>> runPipelineOnMongoS(const boost::int
         opCtx, request, requestedNss, cmdObj, litePipe, std::move(pipeline), std::move(cursors));
 
     // We don't need to storePossibleCursor or propagate writeConcern errors; an $out pipeline
-    // can never run on mongoS.
-    auto status = getStatusFromCommandResult(result->asTempObj());
-    return status.isOK() ? StatusWith<boost::optional<CursorResponse>>(std::move(cursorResponse)) :
-         StatusWith<boost::optional<CursorResponse>>(status);
+    // can never run on mongoS. Filter the command response and return immediately.
+    CommandHelpers::filterCommandReplyForPassthrough(cursorResponse, result);
+    return getStatusFromCommandResult(result->asTempObj());
 }
 
-StatusWith<boost::optional<CursorResponse>> dispatchMergingPipeline(const boost::intrusive_ptr<ExpressionContext>& expCtx,
+Status dispatchMergingPipeline(const boost::intrusive_ptr<ExpressionContext>& expCtx,
                                const ClusterAggregate::Namespaces& namespaces,
                                const AggregationRequest& request,
                                BSONObj cmdObj,
@@ -900,24 +889,23 @@ StatusWith<boost::optional<CursorResponse>> dispatchMergingPipeline(const boost:
     auto mergeCursorResponse = uassertStatusOK(storePossibleCursor(
         opCtx, namespaces.requestedNss, mergingShardId, mergeResponse, expCtx->tailableMode));
 
-    auto status = appendCursorResponseToCommandResult(mergingShardId, mergeCursorResponse.response, result);
-    return status.isOK() ? StatusWith<boost::optional<CursorResponse>>(std::move(mergeCursorResponse.cursor))
-        : StatusWith<boost::optional<CursorResponse>>(status);
+    return appendCursorResponseToCommandResult(mergingShardId, mergeCursorResponse, result);
 }
 
-boost::optional<CursorResponse> createEmptyResultSetWithStatus(OperationContext* opCtx,
+void appendEmptyResultSetWithStatus(OperationContext* opCtx,
                                     const NamespaceString& nss,
-                                    Status status) {
-    // Rewrite ShardNotFound as NamespaceNotFound so that createEmptyResultSet swallows it.
+                                    Status status,
+                                    BSONObjBuilder* result) {
+    // Rewrite ShardNotFound as NamespaceNotFound so that appendEmptyResultSet swallows it.
     if (status == ErrorCodes::ShardNotFound) {
         status = {ErrorCodes::NamespaceNotFound, status.reason()};
     }
-    return createEmptyResultSet(opCtx, status, nss);
+    appendEmptyResultSet(opCtx, *result, status, nss.ns());
 }
 
 }  // namespace
 
-StatusWith<boost::optional<CursorResponse>> ClusterAggregate::runAggregate(OperationContext* opCtx,
+Status ClusterAggregate::runAggregate(OperationContext* opCtx,
                                       const Namespaces& namespaces,
                                       const AggregationRequest& request,
                                       BSONObj cmdObj,
@@ -936,8 +924,9 @@ StatusWith<boost::optional<CursorResponse>> ClusterAggregate::runAggregate(Opera
         routingInfo = std::move(executionNsRoutingInfoStatus.getValue());
     } else if (!(litePipe.hasChangeStream() &&
                  executionNsRoutingInfoStatus == ErrorCodes::NamespaceNotFound)) {
-        return createEmptyResultSetWithStatus(
-            opCtx, namespaces.requestedNss, executionNsRoutingInfoStatus.getStatus());
+        appendEmptyResultSetWithStatus(
+            opCtx, namespaces.requestedNss, executionNsRoutingInfoStatus.getStatus(), result);
+        return Status::OK();
     }
 
     // Determine whether this aggregation must be dispatched to all shards in the cluster.
@@ -990,13 +979,11 @@ StatusWith<boost::optional<CursorResponse>> ClusterAggregate::runAggregate(Opera
     // write the results to the output builder, and return immediately.
     if (expCtx->explain) {
         uassertAllShardsSupportExplain(shardDispatchResults.remoteExplainOutput);
-        auto status = appendExplainResults(std::move(shardDispatchResults.remoteExplainOutput),
+        return appendExplainResults(std::move(shardDispatchResults.remoteExplainOutput),
                                     expCtx,
                                     shardDispatchResults.pipelineForTargetedShards,
                                     shardDispatchResults.pipelineForMerging,
                                     result);
-        return status.isOK() ? StatusWith<boost::optional<CursorResponse>>(boost::none) :
-         StatusWith<boost::optional<CursorResponse>>(status);
     }
 
     // If this isn't an explain, then we must have established cursors on at least one shard.
@@ -1006,12 +993,10 @@ StatusWith<boost::optional<CursorResponse>> ClusterAggregate::runAggregate(Opera
     if (!shardDispatchResults.pipelineForTargetedShards->isSplitForShards()) {
         invariant(shardDispatchResults.remoteCursors.size() == 1);
         auto& remoteCursor = shardDispatchResults.remoteCursors.front();
-        auto reply = uassertStatusOK(storePossibleCursor(
+        const auto reply = uassertStatusOK(storePossibleCursor(
             opCtx, namespaces.requestedNss, remoteCursor, expCtx->tailableMode));
-        auto status = appendCursorResponseToCommandResult(
-            remoteCursor.getShardId().toString(), reply.response, result);
-        return status.isOK() ? StatusWith<boost::optional<CursorResponse>>(std::move(reply.cursor))
-             : StatusWith<boost::optional<CursorResponse>>(status);
+        return appendCursorResponseToCommandResult(
+            remoteCursor.getShardId().toString(), reply, result);
     }
 
     // If we reach here, we have a merge pipeline to dispatch.
@@ -1038,14 +1023,13 @@ void ClusterAggregate::uassertAllShardsSupportExplain(
     }
 }
 
-StatusWith<boost::optional<CursorResponse>> ClusterAggregate::aggPassthrough(OperationContext* opCtx,
+Status ClusterAggregate::aggPassthrough(OperationContext* opCtx,
                                         const Namespaces& namespaces,
                                         const ShardId& shardId,
                                         BSONObj cmdObj,
                                         const AggregationRequest& aggRequest,
                                         const LiteParsedPipeline& liteParsedPipeline,
                                         BSONObjBuilder* out) {
-    boost::optional<CursorResponse> cursorResp;
     // Temporary hack. See comment on declaration for details.
     auto swShard = Grid::get(opCtx)->shardRegistry()->getShard(opCtx, shardId);
     if (!swShard.isOK()) {
@@ -1086,10 +1070,8 @@ StatusWith<boost::optional<CursorResponse>> ClusterAggregate::aggPassthrough(Ope
         auto tailMode = liteParsedPipeline.hasChangeStream()
             ? TailableModeEnum::kTailableAndAwaitData
             : TailableModeEnum::kNormal;
-        auto remoteCursorResp = uassertStatusOK(storePossibleCursor(
+        result = uassertStatusOK(storePossibleCursor(
             opCtx, namespaces.requestedNss, shard->getId(), cmdResponse, tailMode));
-        result = remoteCursorResp.response;
-        cursorResp = std::move(remoteCursorResp.cursor);
     }
 
     // First append the properly constructed writeConcernError. It will then be skipped
@@ -1098,25 +1080,7 @@ StatusWith<boost::optional<CursorResponse>> ClusterAggregate::aggPassthrough(Ope
         appendWriteConcernErrorToCmdResponse(shard->getId(), wcErrorElem, *out);
     }
 
-    // Need to avoid adding the cursor field
-    // Temporary hack to just append elements that dont exist and are NOT the cursor
-    {
-        auto filteredObj = CommandHelpers::filterCommandReplyForPassthrough(result);
-        std::set<std::string> have;
-        {
-            BSONObjIterator i = out->iterator();
-            while (i.more())
-                have.insert(i.next().fieldName());
-        }
-
-        BSONObjIterator it(filteredObj);
-        while (it.more()) {
-            BSONElement e = it.next();
-            if (e.fieldNameStringData() ==  "cursor" || have.count(e.fieldName()))
-                continue;
-            out->append(e);
-        }
-    }
+    out->appendElementsUnique(CommandHelpers::filterCommandReplyForPassthrough(result));
 
     auto status = getStatusFromCommandResult(out->asTempObj());
     if (auto resolvedView = status.extraInfo<ResolvedView>()) {
@@ -1136,8 +1100,7 @@ StatusWith<boost::optional<CursorResponse>> ClusterAggregate::aggPassthrough(Ope
             opCtx, nsStruct, resolvedAggRequest, resolvedAggCmd, out);
     }
 
-    return status.isOK() ? StatusWith<boost::optional<CursorResponse>>(std::move(cursorResp))
-        : StatusWith<boost::optional<CursorResponse>>(status);
+    return status;
 }
 
 }  // namespace mongo

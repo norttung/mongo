@@ -471,20 +471,27 @@ int getUniqueCodeFromCommandResults(const std::vector<Strategy::CommandResult>& 
     return commonErrCode;
 }
 
-boost::optional<CursorResponse> createEmptyResultSet(OperationContext* opCtx,
+bool appendEmptyResultSet(OperationContext* opCtx,
+                          BSONObjBuilder& result,
                           Status status,
-                          const NamespaceString& ns) {
+                          const std::string& ns) {
     invariant(!status.isOK());
 
     CurOp::get(opCtx)->debug().nreturned = 0;
     CurOp::get(opCtx)->debug().nShards = 0;
 
     if (status == ErrorCodes::NamespaceNotFound) {
-        return CursorResponse(ns, 0LL, {});
+        // Old style reply
+        result << "result" << BSONArray();
+
+        // New (command) style reply
+        appendCursorResponseObject(0LL, ns, BSONArray(), &result);
+
+        return true;
     }
 
     uassertStatusOK(status);
-    return boost::none;
+    return true;
 }
 
 StatusWith<CachedDatabaseInfo> createShardDatabase(OperationContext* opCtx, StringData dbName) {

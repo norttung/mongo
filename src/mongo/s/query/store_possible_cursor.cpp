@@ -44,7 +44,7 @@
 
 namespace mongo {
 
-StatusWith<RemoteCursorResponse> storePossibleCursor(OperationContext* opCtx,
+StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
                                         const NamespaceString& requestedNss,
                                         const RemoteCursor& remoteCursor,
                                         TailableModeEnum tailableMode) {
@@ -60,7 +60,7 @@ StatusWith<RemoteCursorResponse> storePossibleCursor(OperationContext* opCtx,
         tailableMode);
 }
 
-StatusWith<RemoteCursorResponse> storePossibleCursor(OperationContext* opCtx,
+StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
                                         const NamespaceString& requestedNss,
                                         const ShardId& shardId,
                                         const Shard::CommandResponse& commandResponse,
@@ -77,7 +77,7 @@ StatusWith<RemoteCursorResponse> storePossibleCursor(OperationContext* opCtx,
                                tailableMode);
 }
 
-StatusWith<RemoteCursorResponse> storePossibleCursor(OperationContext* opCtx,
+StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
                                         const ShardId& shardId,
                                         const HostAndPort& server,
                                         const BSONObj& cmdResult,
@@ -86,7 +86,7 @@ StatusWith<RemoteCursorResponse> storePossibleCursor(OperationContext* opCtx,
                                         ClusterCursorManager* cursorManager,
                                         TailableModeEnum tailableMode) {
     if (!cmdResult["ok"].trueValue() || !cmdResult.hasField("cursor")) {
-        return RemoteCursorResponse{boost::none, cmdResult};
+        return cmdResult;
     }
 
     auto incomingCursorResponse = CursorResponse::parseFromBSON(cmdResult);
@@ -103,7 +103,7 @@ StatusWith<RemoteCursorResponse> storePossibleCursor(OperationContext* opCtx,
 
     if (incomingCursorResponse.getValue().getCursorId() == CursorId(0)) {
         CurOp::get(opCtx)->debug().cursorExhausted = true;
-        return RemoteCursorResponse{boost::none, cmdResult};
+        return cmdResult;
     }
 
     ClusterClientCursorParams params(incomingCursorResponse.getValue().getNSS());
@@ -137,9 +137,10 @@ StatusWith<RemoteCursorResponse> storePossibleCursor(OperationContext* opCtx,
     }
 
     CurOp::get(opCtx)->debug().cursorid = clusterCursorId.getValue();
-    boost::optional<CursorResponse> resp = CursorResponse(
+
+    CursorResponse outgoingCursorResponse(
         requestedNss, clusterCursorId.getValue(), incomingCursorResponse.getValue().getBatch());
-    return RemoteCursorResponse{std::move(resp), cmdResult};
+    return outgoingCursorResponse.toBSON(CursorResponse::ResponseType::InitialResponse);
 }
 
 }  // namespace mongo
