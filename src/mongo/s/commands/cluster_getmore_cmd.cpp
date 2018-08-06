@@ -80,8 +80,9 @@ public:
             // Counted as a getMore, not as a command.
             globalOpCounters.gotGetMore();
             auto response = uassertStatusOK(ClusterFind::runGetMore(opCtx, _request));
-            response.addToReply(CursorResponse::ResponseType::SubsequentResponse, reply, 
-                _request.tempOptInToDocumentSequences);
+            response.addToReply(CursorResponse::ResponseType::SubsequentResponse,
+                                reply,
+                                _request.tempOptInToDocumentSequences);
         }
 
         const GetMoreRequest _request;

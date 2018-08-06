@@ -141,8 +141,8 @@ Message DBClientCursor::_assembleGetMore() {
         auto gmr = GetMoreRequest(ns,
                                   cursorId,
                                   boost::make_optional(batchSize != 0, batchSize),
-                                  boost::none,   // awaitDataTimeout
-                                  boost::none,   // term
+                                  boost::none,  // awaitDataTimeout
+                                  boost::none,  // term
                                   boost::none,
                                   false);  // lastKnownCommittedOptime
         return assembleCommandRequest(_client, ns.db(), opts, gmr.toBSON());

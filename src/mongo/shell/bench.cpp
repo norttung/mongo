@@ -257,8 +257,8 @@ int runQueryWithReadCommands(DBClientBase* conn,
             qr->getBatchSize()
                 ? boost::optional<std::int64_t>(static_cast<std::int64_t>(*qr->getBatchSize()))
                 : boost::none,
-            boost::none,   // maxTimeMS
-            boost::none,   // term
+            boost::none,  // maxTimeMS
+            boost::none,  // term
             boost::none,
             false);  // lastKnownCommittedOpTime
         BSONObj getMoreCommandResult;
@@ -1024,9 +1024,9 @@ void BenchRunOp::executeOnce(DBClientBase* conn,
                 while (cursorResponse.getCursorId() != 0) {
                     GetMoreRequest getMoreRequest(cursorResponse.getNSS(),
                                                   cursorResponse.getCursorId(),
-                                                  boost::none,   // batchSize
-                                                  boost::none,   // maxTimeMS
-                                                  boost::none,   // term
+                                                  boost::none,  // batchSize
+                                                  boost::none,  // maxTimeMS
+                                                  boost::none,  // term
                                                   boost::none,
                                                   false);  // lastKnownCommittedOpTime
                     BSONObj getMoreCommandResult;

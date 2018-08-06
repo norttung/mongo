@@ -20,14 +20,19 @@
               true,
               "find on empty collection did not utilize documentSequences when flag was provided");
 
-    let aggRes = assert.commandWorked(db.runCommand({aggregate: jsTestName(), pipeline: [], cursor: {batchSize: 0}}));
+    let aggRes = assert.commandWorked(
+        db.runCommand({aggregate: jsTestName(), pipeline: [], cursor: {batchSize: 0}}));
     assert.eq(
         usedDocumentSequences(aggRes),
         false,
         "aggregate on empty collection utilized documentSequences when flag was not provided");
 
-    let aggResWithDocSeq = assert.commandWorked(
-        db.runCommand({aggregate: jsTestName(), pipeline: [], cursor: {batchSize: 0}, tempOptInToDocumentSequences: true}));
+    let aggResWithDocSeq = assert.commandWorked(db.runCommand({
+        aggregate: jsTestName(),
+        pipeline: [],
+        cursor: {batchSize: 0},
+        tempOptInToDocumentSequences: true
+    }));
     assert.eq(
         usedDocumentSequences(aggResWithDocSeq),
         true,

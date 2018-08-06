@@ -312,9 +312,8 @@ public:
                 const CursorId cursorId = 0;
                 endQueryOp(opCtx, collection, *exec, numResults, cursorId);
                 CursorResponse(nss, cursorId, {})
-                   .addToReply(CursorResponse::ResponseType::InitialResponse,
-                               result,
-                               useDocSequences);
+                    .addToReply(
+                        CursorResponse::ResponseType::InitialResponse, result, useDocSequences);
                 return;
             }
 

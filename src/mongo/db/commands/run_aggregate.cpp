@@ -121,7 +121,7 @@ bool handleCursorCommand(OperationContext* opCtx,
             cursors[idx]->getExecutor()->saveState();
             cursors[idx]->getExecutor()->detachFromOperationContext();
         }
-        
+
         if (request.getTempOptInToDocumentSequences()) {
             auto docSeqBuilder = result->getDocSequenceBuilder("cursors");
             for (auto& bson : cursorsBuilder) {
@@ -130,7 +130,7 @@ bool handleCursorCommand(OperationContext* opCtx,
         } else {
             auto bodyBuilder = result->getBodyBuilder();
             BSONArrayBuilder cursorsArrayBuilder;
-            for (auto& bson: cursorsBuilder) {
+            for (auto& bson : cursorsBuilder) {
                 cursorsArrayBuilder.append(bson);
             }
             bodyBuilder.appendArray("cursors", cursorsArrayBuilder.obj());

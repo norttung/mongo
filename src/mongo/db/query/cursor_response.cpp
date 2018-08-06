@@ -247,17 +247,18 @@ void CursorResponse::addToBSON(CursorResponse::ResponseType responseType,
 }
 
 void CursorResponse::addToReply(CursorResponse::ResponseType responseType,
-                                rpc::ReplyBuilderInterface* reply, 
+                                rpc::ReplyBuilderInterface* reply,
                                 bool useDocumentSequences) const {
     if (!useDocumentSequences) {
         auto bob = reply->getBodyBuilder();
         addToBSON(responseType, &bob);
         return;
     }
-    const char* batchFieldName =
-        (responseType == ResponseType::InitialResponse) ? kBatchDocSequenceFieldInitial : kBatchDocSequenceField;
+    const char* batchFieldName = (responseType == ResponseType::InitialResponse)
+        ? kBatchDocSequenceFieldInitial
+        : kBatchDocSequenceField;
     auto docSeq = reply->getDocSequenceBuilder(batchFieldName);
-    for(auto& obj : _batch) {
+    for (auto& obj : _batch) {
         docSeq.append(obj);
     }
     docSeq.done();
@@ -270,7 +271,7 @@ void CursorResponse::addToReply(CursorResponse::ResponseType responseType,
     if (_latestOplogTimestamp) {
         bob.append(kInternalLatestOplogTimestampField, *_latestOplogTimestamp);
     }
-        bob.append("ok", 1.0);
+    bob.append("ok", 1.0);
 
     if (_writeConcernError) {
         bob.append("writeConcernError", *_writeConcernError);
