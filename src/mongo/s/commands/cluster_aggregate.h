@@ -100,7 +100,7 @@ private:
                                  const Namespaces& namespaces,
                                  const ShardId& shardId,
                                  BSONObj cmdObj,
-                                 const AggregationRequest& aggRequest,
+                                 AggregationRequest& aggRequest,
                                  const LiteParsedPipeline& liteParsedPipeline,
                                  rpc::ReplyBuilderInterface* out);
 };

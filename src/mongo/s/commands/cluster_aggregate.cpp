@@ -1053,9 +1053,12 @@ Status ClusterAggregate::aggPassthrough(OperationContext* opCtx,
                                         const Namespaces& namespaces,
                                         const ShardId& shardId,
                                         BSONObj cmdObj,
-                                        const AggregationRequest& aggRequest,
+                                        AggregationRequest& aggRequest,
                                         const LiteParsedPipeline& liteParsedPipeline,
                                         rpc::ReplyBuilderInterface* out) {
+    // TODO: SERVER-36287 Enable DocumentSequence returns internally.
+    const auto useDocSequences = aggRequest.getTempOptInToDocumentSequences();
+    aggRequest.setTempOptInToDocumentSequences(false);
     // Temporary hack. See comment on declaration for details.
     auto swShard = Grid::get(opCtx)->shardRegistry()->getShard(opCtx, shardId);
     if (!swShard.isOK()) {
@@ -1108,7 +1111,7 @@ Status ClusterAggregate::aggPassthrough(OperationContext* opCtx,
     if (cursorResp) {
         cursorResp->addToReply(CursorResponse::ResponseType::InitialResponse,
                                out,
-                               aggRequest.getTempOptInToDocumentSequences());
+                               useDocSequences);
     }
     auto bodyBuilder = out->getBodyBuilder();
     if (auto wcErrorElem = result["writeConcernError"]) {
@@ -1120,6 +1123,9 @@ Status ClusterAggregate::aggPassthrough(OperationContext* opCtx,
     if (auto resolvedView = status.extraInfo<ResolvedView>()) {
         auto resolvedAggRequest = resolvedView->asExpandedViewAggregation(aggRequest);
         auto resolvedAggCmd = resolvedAggRequest.serializeToCommandObj().toBson();
+        // Don't let views use DocumentSequences and renable them incase anything else needs to
+        // use the request
+        aggRequest.setTempOptInToDocumentSequences(useDocSequences);
         bodyBuilder.doneFast();
         out->reset();
 
@@ -1134,7 +1140,8 @@ Status ClusterAggregate::aggPassthrough(OperationContext* opCtx,
         return ClusterAggregate::runAggregate(
             opCtx, nsStruct, resolvedAggRequest, resolvedAggCmd, out);
     }
-
+    
+    aggRequest.setTempOptInToDocumentSequences(useDocSequences);
     return status;
 }
 
