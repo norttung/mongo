@@ -19,7 +19,7 @@ var RPC_PROTOCOLS = {OP_QUERY: "opQueryOnly", OP_MSG: "opMsgOnly"};
     function runInShell(rpcProtocol, func) {
         assert(0 == _runMongoProgram("mongo",
                                      "--rpcProtocols=" + rpcProtocol,
-                                     "--readMode=commands",  // ensure we use the find command.
+                                     "--readMode=commandsNoDocumentSequences",  // ensure we use the find command.
                                      "--eval",
                                      "(" + func.toString() + ")();",
                                      db.getMongo().host));
