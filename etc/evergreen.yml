@@ -4748,7 +4748,7 @@ tasks:
   - func: "run tests"
     vars:
       task_path_suffix: /data/multiversion
-      resmoke_args: --suites=multiversion_auth --storageEngine=wiredTiger
+      resmoke_args: --suites=multiversion_auth --storageEngine=wiredTiger --shellReadMode=commandsNoDocumentSequences
       run_multiple_jobs: true
 
 - <<: *task_template
@@ -4759,7 +4759,7 @@ tasks:
   - func: "run tests"
     vars:
       task_path_suffix: /data/multiversion
-      resmoke_args: --suites=multiversion --storageEngine=wiredTiger
+      resmoke_args: --suites=multiversion --storageEngine=wiredTiger --shellReadMode=commandsNoDocumentSequences
       run_multiple_jobs: true
 
 - <<: *task_template
