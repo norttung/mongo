@@ -237,6 +237,16 @@ public:
     }
 
     /**
+     * Converts this response to its representation in a ReplyBuilderInterface. Note that this
+     * begins a body
+     * and adding any DocumentSequences to the reply after this call is illegal.
+     */
+    void addToReply(ResponseType responseType,
+                    rpc::ReplyBuilderInterface* reply,
+                    bool useDocumentSequences,
+                    bool appendWriteConcern) const;
+
+    /**
      * Converts this response to its raw BSON representation.
      */
     BSONObj toBSON(ResponseType responseType) const;
@@ -246,6 +256,11 @@ public:
     }
 
 private:
+    void _appendCursor(CursorResponse::ResponseType responseType, 
+                       BSONObjBuilder* builder, 
+                       bool useDocumentSequences, 
+                       bool appendWriteConcern) const;
+
     NamespaceString _nss;
     CursorId _cursorId;
     std::vector<BSONObj> _batch;
