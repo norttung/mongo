@@ -56,6 +56,7 @@ selector:
   - jstests/core/explain_upsert.js
   exclude_with_any_tags:
   - assumes_against_mongod_not_mongos
+  - requires_document_sequences
 
 executor:
   archive:
@@ -65,7 +66,8 @@ executor:
   config:
     shell_options:
       rpcProtocols: opQueryOnly
-      readMode: commands
+      # opQuery doesn't support document sequences, so we turn them off
+      readMode: commandsNoDocumentSequences 
   hooks:
   - class: CheckReplDBHash
   - class: ValidateCollections

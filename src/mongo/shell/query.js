@@ -253,6 +253,10 @@ DBQuery.prototype._convertToCommand = function(canAttachReadPref) {
         }
     }
 
+    if (this._mongo.useDocumentSequences()) {
+        cmd["tempOptInToDocumentSequences"] = true;
+    }
+
     return cmd;
 };
 
@@ -708,6 +712,10 @@ function DBCommandCursor(db, cmdResult, batchSize, maxAwaitTimeMS, txnNumber) {
         this._maxAwaitTimeMS = maxAwaitTimeMS;
         this._txnNumber = txnNumber;
 
+        if (db.getMongo().useDocumentSequences()) {
+            this._useDocumentSequences = true;
+        }
+
         this._ns = cmdResult.cursor.ns;
         this._db = db;
         this._collName = this._ns.substr(this._ns.indexOf(".") + 1);
@@ -783,6 +791,10 @@ DBCommandCursor.prototype._runGetMoreCommand = function() {
     if (this._txnNumber) {
         getMoreCmd.txnNumber = NumberLong(this._txnNumber);
         getMoreCmd.autocommit = false;
+    }
+
+    if (this._useDocumentSequences) {
+        getMoreCmd["tempOptInToDocumentSequences"] = true;
     }
 
     // Deliver the getMore command, and check for errors in the response.

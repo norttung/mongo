@@ -6,6 +6,8 @@ selector:
   exclude_files:
   # Transactions are not supported on MongoDB standalone nodes.
   - jstests/core/txns/**/*.js
+  exclude_with_any_tags:
+  - requires_document_sequences
 
 executor:
   archive:
@@ -14,7 +16,8 @@ executor:
   config:
     shell_options:
       rpcProtocols: opQueryOnly
-      readMode: commands
+      # opQuery doesn't support document sequences, so we turn them off
+      readMode: commandsNoDocumentSequences
   hooks:
   - class: ValidateCollections
     shell_options:
