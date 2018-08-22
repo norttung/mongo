@@ -14,6 +14,7 @@ env.Library(
         '$BUILD_DIR/mongo/db/curop',
         '$BUILD_DIR/mongo/s/async_requests_sender',
         '$BUILD_DIR/mongo/s/transaction/router_session',
+        '$BUILD_DIR/mongo/db/query/command_request_response',
     ],
 )
 

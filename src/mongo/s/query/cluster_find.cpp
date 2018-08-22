@@ -165,6 +165,10 @@ StatusWith<std::unique_ptr<QueryRequest>> transformQueryForShards(
     // Therefore, we must always send singleBatch=false (wantMore=true) to the shards.
     newQR->setWantMore(true);
 
+    // TODO: SERVER-36287 Use document sequences internally for cursor responses from the shards to
+    // mongos
+    newQR->setTempOptInToDocumentSequences(false);
+
     invariant(newQR->validate());
     return std::move(newQR);
 }

@@ -296,6 +296,7 @@ public:
 
             Collection* const collection = ctx->getCollection();
 
+            const auto useDocSequences = cq->getQueryRequest().getTempOptInToDocumentSequences();
             // Get the execution plan for the query.
             auto exec = uassertStatusOK(getExecutorFind(opCtx, collection, nss, std::move(cq)));
 
@@ -310,8 +311,9 @@ public:
                 const long long numResults = 0;
                 const CursorId cursorId = 0;
                 endQueryOp(opCtx, collection, *exec, numResults, cursorId);
-                auto bodyBuilder = result->getBodyBuilder();
-                appendCursorResponseObject(cursorId, nss.ns(), BSONArray(), &bodyBuilder);
+                CursorResponse(nss, cursorId, {})
+                    .addToReply(
+                        CursorResponse::ResponseType::InitialResponse, useDocSequences, result);
                 return;
             }
 
@@ -323,6 +325,7 @@ public:
             // Stream query results, adding them to a BSONArray as we go.
             CursorResponseBuilder::Options options;
             options.isInitialResponse = true;
+            options.useDocumentSequences = useDocSequences;
             CursorResponseBuilder firstBatch(result, options);
             BSONObj obj;
             PlanExecutor::ExecState state = PlanExecutor::ADVANCED;

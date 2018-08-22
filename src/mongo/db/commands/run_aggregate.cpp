@@ -98,6 +98,10 @@ bool handleCursorCommand(OperationContext* opCtx,
 
     if (cursors.size() > 1) {
 
+        uassert(50935,
+                "$exchange is not compatible with document sequences",
+                !request.getTempOptInToDocumentSequences());
+
         uassert(
             ErrorCodes::BadValue, "the exchange initial batch size must be zero", batchSize == 0);
 
@@ -124,12 +128,12 @@ bool handleCursorCommand(OperationContext* opCtx,
 
         auto bodyBuilder = result->getBodyBuilder();
         bodyBuilder.appendArray("cursors", cursorsBuilder.obj());
-
         return true;
     }
 
     CursorResponseBuilder::Options options;
     options.isInitialResponse = true;
+    options.useDocumentSequences = request.getTempOptInToDocumentSequences();
     CursorResponseBuilder responseBuilder(result, options);
 
     ClientCursor* cursor = cursors[0];

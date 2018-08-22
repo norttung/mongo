@@ -78,7 +78,7 @@ public:
                                const Namespaces& namespaces,
                                const AggregationRequest& request,
                                BSONObj cmdObj,
-                               BSONObjBuilder* result);
+                               rpc::ReplyBuilderInterface* result);
 
 private:
     static void uassertAllShardsSupportExplain(
@@ -102,7 +102,7 @@ private:
                                  BSONObj cmd,
                                  const AggregationRequest&,
                                  const LiteParsedPipeline&,
-                                 BSONObjBuilder* result);
+                                 rpc::ReplyBuilderInterface* out);
 };
 
 }  // namespace mongo

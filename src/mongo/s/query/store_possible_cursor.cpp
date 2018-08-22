@@ -44,10 +44,10 @@
 
 namespace mongo {
 
-StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
-                                        const NamespaceString& requestedNss,
-                                        const RemoteCursor& remoteCursor,
-                                        TailableModeEnum tailableMode) {
+StatusWith<boost::optional<CursorResponse>> storePossibleCursor(OperationContext* opCtx,
+                                                                const NamespaceString& requestedNss,
+                                                                const RemoteCursor& remoteCursor,
+                                                                TailableModeEnum tailableMode) {
     auto executorPool = Grid::get(opCtx)->getExecutorPool();
     return storePossibleCursor(
         opCtx,
@@ -60,11 +60,12 @@ StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
         tailableMode);
 }
 
-StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
-                                        const NamespaceString& requestedNss,
-                                        const ShardId& shardId,
-                                        const Shard::CommandResponse& commandResponse,
-                                        TailableModeEnum tailableMode) {
+StatusWith<boost::optional<CursorResponse>> storePossibleCursor(
+    OperationContext* opCtx,
+    const NamespaceString& requestedNss,
+    const ShardId& shardId,
+    const Shard::CommandResponse& commandResponse,
+    TailableModeEnum tailableMode) {
     invariant(commandResponse.hostAndPort);
     auto executorPool = Grid::get(opCtx)->getExecutorPool();
     return storePossibleCursor(opCtx,
@@ -77,16 +78,16 @@ StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
                                tailableMode);
 }
 
-StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
-                                        const ShardId& shardId,
-                                        const HostAndPort& server,
-                                        const BSONObj& cmdResult,
-                                        const NamespaceString& requestedNss,
-                                        executor::TaskExecutor* executor,
-                                        ClusterCursorManager* cursorManager,
-                                        TailableModeEnum tailableMode) {
+StatusWith<boost::optional<CursorResponse>> storePossibleCursor(OperationContext* opCtx,
+                                                                const ShardId& shardId,
+                                                                const HostAndPort& server,
+                                                                const BSONObj& cmdResult,
+                                                                const NamespaceString& requestedNss,
+                                                                executor::TaskExecutor* executor,
+                                                                ClusterCursorManager* cursorManager,
+                                                                TailableModeEnum tailableMode) {
     if (!cmdResult["ok"].trueValue() || !cmdResult.hasField("cursor")) {
-        return cmdResult;
+        return boost::optional<CursorResponse>(boost::none);
     }
 
     auto incomingCursorResponse = CursorResponse::parseFromBSON(cmdResult);
@@ -103,7 +104,7 @@ StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
 
     if (incomingCursorResponse.getValue().getCursorId() == CursorId(0)) {
         CurOp::get(opCtx)->debug().cursorExhausted = true;
-        return cmdResult;
+        return boost::optional<CursorResponse>(std::move(incomingCursorResponse.getValue()));
     }
 
     ClusterClientCursorParams params(incomingCursorResponse.getValue().getNSS());
@@ -137,10 +138,8 @@ StatusWith<BSONObj> storePossibleCursor(OperationContext* opCtx,
     }
 
     CurOp::get(opCtx)->debug().cursorid = clusterCursorId.getValue();
-
-    CursorResponse outgoingCursorResponse(
-        requestedNss, clusterCursorId.getValue(), incomingCursorResponse.getValue().getBatch());
-    return outgoingCursorResponse.toBSON(CursorResponse::ResponseType::InitialResponse);
+    return boost::optional<CursorResponse>(CursorResponse(
+        requestedNss, clusterCursorId.getValue(), incomingCursorResponse.getValue().getBatch()));
 }
 
 }  // namespace mongo

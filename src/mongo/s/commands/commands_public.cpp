@@ -65,7 +65,7 @@ bool cursorCommandPassthrough(OperationContext* opCtx,
         Shard::RetryPolicy::kIdempotent);
     const auto cmdResponse = uassertStatusOK(std::move(response.swResponse));
 
-    auto transformedResponse = uassertStatusOK(
+    auto cursor = uassertStatusOK(
         storePossibleCursor(opCtx,
                             dbInfo.primaryId(),
                             *response.shardHostAndPort,
@@ -74,7 +74,11 @@ bool cursorCommandPassthrough(OperationContext* opCtx,
                             Grid::get(opCtx)->getExecutorPool()->getArbitraryExecutor(),
                             Grid::get(opCtx)->getCursorManager()));
 
-    CommandHelpers::filterCommandReplyForPassthrough(transformedResponse, out);
+    if (cursor) {
+        cursor->addToBSON(CursorResponse::ResponseType::InitialResponse, out);
+    } else {
+        CommandHelpers::filterCommandReplyForPassthrough(cmdResponse.data, out);
+    }
     return true;
 }
 
@@ -441,7 +445,9 @@ public:
 
         auto dbInfoStatus = Grid::get(opCtx)->catalogCache()->getDatabase(opCtx, dbName);
         if (!dbInfoStatus.isOK()) {
-            return appendEmptyResultSet(opCtx, result, dbInfoStatus.getStatus(), nss.ns());
+            auto cursor = makeEmptyResultSetCursorResponse(opCtx, dbInfoStatus.getStatus(), nss);
+            cursor.addToBSON(CursorResponse::ResponseType::InitialResponse, &result);
+            return true;
         }
 
         return cursorCommandPassthrough(
