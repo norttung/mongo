@@ -95,7 +95,7 @@
         // which we do not expect them to appear.
         const ignoreFields =
             (isMongos
-                 ? ["docsExamined", "keysExamined", "keysInserted", "keysDeleted", "planSummary", 
+                 ? ["docsExamined", "keysExamined", "keysInserted", "keysDeleted", "planSummary",
 					 "usedDisk", "hasSortStage"]
                  : ["nShards"]);
 

@@ -257,7 +257,9 @@ void MongoBase::Functions::runCommand::call(JSContext* cx, JS::CallArgs args) {
 
     // The returned object is not read only as some of our tests depend on modifying it.
     // Also, we make a copy here because we want a copy after we dump bodyRes
-    ValueReader(cx, args.rval()).fromBSON(bodyRes.getOwned(), nullptr, false);
+
+    ValueReader(cx, args.rval())
+        .fromBSON(bodyRes.getOwned(), nullptr, false, reply->hasDocumentSequences());
     if (reply->hasDocumentSequences()) {
         foldDocumentSequences(cx, args.rval(), reply->getDocumentSequences());
     }
